@@ -83,10 +83,10 @@ pub struct AssemblyResult {
 /// * `Ok(AssemblyResult)` containing the generated machine code and symbol table.
 /// * `Err(AssemblerError)` if any error occurs during lexing, parsing, or encoding.
 pub fn assemble(source: &str) -> Result<AssemblyResult, AssemblerError> {
-    // --- Pass 1: Lexing, Parsing, Symbol Table Construction ---
+    //  Pass 1: Lexing, Parsing, Symbol Table Construction 
     let first_pass_result = run_first_pass(source)?;
 
-    // --- Pass 2: Symbol Resolution and Encoding ---
+    //  Pass 2: Symbol Resolution and Encoding 
     let machine_code = run_second_pass(
         &first_pass_result.parsed_lines,
         &first_pass_result.symbol_table,
@@ -109,12 +109,12 @@ fn run_first_pass(source: &str) -> Result<FirstPassResult, AssemblerError> {
     while let Some(line_result) = parser.next_line() {
         let line = line_result?; // Propagate parsing errors
 
-        // --- Handle Labels ---
+        //  Handle Labels 
         if let Some(label) = &line.label {
             symbol_table.define(label.clone(), current_address, line.line_number)?;
         }
 
-        // --- Handle Instructions and Directives ---
+        //  Handle Instructions and Directives 
         match &line.kind {
             Some(parser::ParsedLineKind::Instruction(_)) => {
                 // Most RV32IM instructions are 4 bytes
@@ -256,7 +256,7 @@ fn run_second_pass(
     Ok(machine_code)
 }
 
-// --- Unit Tests ---
+//  Unit Tests 
 #[cfg(test)]
 mod tests {
     use super::*;
