@@ -1,0 +1,5 @@
+[workspace]
+members = ["bins/cli", "bins/ese-test", "crates/riscv_asm"]
+
+[workspace.dependencies]
+anyhow = "1.0.97"
