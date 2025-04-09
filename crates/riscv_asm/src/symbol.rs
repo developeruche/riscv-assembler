@@ -146,12 +146,10 @@ impl SymbolTable {
     }
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_new_symbol_table() {
         let st = SymbolTable::new();
