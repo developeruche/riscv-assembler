@@ -280,6 +280,47 @@ mod tests {
     }
 
     #[test]
+    fn test_simple_instruction_1() {
+        let code = "lb a0, 8(sp)";
+        let tokens = tokenize(code).unwrap();
+
+        // Check the instruction token
+        assert_eq!(tokens[0].kind, TokenKind::Instruction);
+        assert_eq!(tokens[0].text, "lb".to_string());
+
+        // Check the register token
+        assert_eq!(tokens[1].kind, TokenKind::Register);
+        assert_eq!(tokens[1].text, "a0".to_string());
+
+        // Check the comma token
+        assert_eq!(tokens[2].kind, TokenKind::Comma);
+        assert_eq!(tokens[2].text, ",".to_string());
+
+        // Check the immediate value token
+        assert_eq!(tokens[3].kind, TokenKind::Integer);
+        assert_eq!(tokens[3].text, "8".to_string());
+
+        // Check the left parenthesis token
+        assert_eq!(tokens[4].kind, TokenKind::LParen);
+        assert_eq!(tokens[4].text, "(".to_string());
+
+        // Check the base register token
+        assert_eq!(tokens[5].kind, TokenKind::Register);
+        assert_eq!(tokens[5].text, "sp".to_string());
+
+        // Check the right parenthesis token
+        assert_eq!(tokens[6].kind, TokenKind::RParen);
+        assert_eq!(tokens[6].text, ")".to_string());
+
+        // Check the right parenthesis token
+        assert_eq!(tokens[7].kind, TokenKind::EndOfFile);
+        assert_eq!(tokens[7].text, "".to_string());
+
+        // Verify the total number of tokens
+        assert_eq!(tokens.len(), 8);
+    }
+
+    #[test]
     fn test_directive() {
         let code = ".data\nmy_var: .word 123";
         let tokens = tokenize(code).unwrap();
