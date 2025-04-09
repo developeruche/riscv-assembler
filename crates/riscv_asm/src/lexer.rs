@@ -45,7 +45,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
         };
 
         match char {
-            // --- Whitespace and Comments ---
+            //  Whitespace and Comments
             ' ' | '\t' | '\r' => {
                 // Ignore whitespace other than newline
                 col_num += 1;
@@ -78,7 +78,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
                 continue;
             }
 
-            // --- Punctuation ---
+            //  Punctuation
             ',' => tokens.push(Token {
                 kind: TokenKind::Comma,
                 text: char.to_string(),
@@ -100,7 +100,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
                 loc,
             }),
 
-            // --- Numbers (Decimal and Hex) ---
+            //  Numbers (Decimal and Hex)
             '-' | '0'..='9' => {
                 let mut text = String::new();
                 text.push(char);
@@ -144,7 +144,7 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
                 continue; // Already advanced col_num within the loop
             }
 
-            // --- Identifiers, Directives, Instructions, Registers ---
+            //  Identifiers, Directives, Instructions, Registers
             '.' => {
                 // Potential directive
                 let mut text = String::new();
@@ -241,7 +241,7 @@ fn classify_identifier(s: &str) -> TokenKind {
     }
 }
 
-// --- Unit Tests ---
+//  Unit Tests
 #[cfg(test)]
 mod tests {
     use super::*;
