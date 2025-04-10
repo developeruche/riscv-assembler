@@ -4,23 +4,13 @@
 //! It takes an assembly file as input and produces a binary file with the machine code.
 use std::path::PathBuf;
 use std::process;
-mod file_utils;
 
 use anyhow::{Context, Result};
-use clap::{Parser, ValueEnum};
-use file_utils::{read_file, write_output};
-use riscv_asm::assembler::assemble;
-
-/// Output format for the assembled binary
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum OutputFormat {
-    /// Raw binary format (just the bytes)
-    Binary,
-    /// Intel HEX format
-    Hex,
-    /// Text format (one instruction per line in hex)
-    Text,
-}
+use clap::Parser;
+use riscv_asm::{
+    assembler::assemble,
+    utils::{OutputFormat, read_file, write_output},
+};
 
 /// RISC-V Assembler CLI
 #[derive(Parser, Debug)]
@@ -65,6 +55,8 @@ fn run() -> Result<()> {
 
     // Assemble the source code
     let assembled = assemble(&source).map_err(|e| anyhow::anyhow!("Assembly error: {}", e))?;
+
+    println!("Assembled Code: {:?}", assembled.code);
 
     if args.verbose {
         println!(

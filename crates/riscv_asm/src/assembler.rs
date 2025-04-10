@@ -26,6 +26,10 @@ pub fn assemble(source: &str) -> Result<AssemblyOutput, AssemblerError> {
     let mut parser = Parser::new(&tokens);
     let parsed_items = parser.parse_all(&mut symbol_table)?;
 
+    for i in parsed_items.clone() {
+        println!("Parsed Items: {:?}", i);
+    }
+
     // Check for unresolved symbols
     let unresolved = symbol_table.check_unresolved();
     if !unresolved.is_empty() {
@@ -50,18 +54,22 @@ pub fn assemble(source: &str) -> Result<AssemblyOutput, AssemblerError> {
     let mut memory_map = MemoryMap::new();
     allocate_memory(&parsed_items, &mut memory_map)?;
 
+    println!("This is the memory map: {:?}", memory_map);
+
     // Step 4: Generate machine code
     let output = generate_machine_code(&parsed_items, &symbol_table, &memory_map)?;
     Ok(output)
 }
 
 /// Represents a memory location during assembly
+#[derive(Debug)]
 pub struct MemoryLocation {
     pub address: u32,
     pub size: usize, // in bytes
 }
 
 /// Maps parsed items to their allocated memory locations
+#[derive(Debug)]
 struct MemoryMap {
     locations: Vec<(usize, MemoryLocation)>, // (item_index, location)
     current_address: u32,
@@ -155,7 +163,6 @@ fn generate_machine_code(
     symbol_table: &SymbolTable,
     memory_map: &MemoryMap,
 ) -> Result<AssemblyOutput, AssemblerError> {
-    // let mut code = Vec::new();
     let mut output_address = 0;
     let start_address = memory_map
         .locations
@@ -282,6 +289,7 @@ fn convert_to_isa_instruction(
             } => {
                 // Memory operands typically need to be handled specially based on the instruction
                 // but for now we'll just note this is incomplete
+                // We would need to get the content of the register at the base and add it to the offset. for now I would advice this instruction format should not be used
                 Ok(IsaOperand::Immediate(*offset))
             }
         }

@@ -156,6 +156,9 @@ dependencies = [
 [[package]]
 name = "riscv_asm"
 version = "0.1.0"
+dependencies = [
+ "clap",
+]
 
 [[package]]
 name = "strsim"
