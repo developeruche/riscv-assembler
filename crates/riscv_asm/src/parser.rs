@@ -3,7 +3,7 @@
 //! This module handles converting tokens from the lexer into structured IR
 //! (Intermediate Representation) that can be processed by later stages.
 
-use crate::error::{AssemblerError, SourceLocation, err_parse};
+use crate::error::{AssemblerError, err_parse};
 use crate::isa::Register;
 use crate::lexer::{Token, TokenKind};
 use crate::symbol::SymbolTable;
@@ -633,16 +633,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn skip_whitespace(&mut self) {
-        while let Some(token) = self.peek_token() {
-            if token.kind == TokenKind::Newline {
-                break;
-            }
-            // Add other whitespace token kinds if needed
-            self.consume_token();
-        }
-    }
-
     /// Consumes tokens until the end of the current line is reached.
     fn consume_to_end_of_line(&mut self) {
         while let Some(token) = self.peek_token() {
@@ -662,7 +652,10 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lexer::{Token, TokenKind, tokenize};
+    use crate::{
+        error::SourceLocation,
+        lexer::{Token, TokenKind, tokenize},
+    };
 
     fn create_token(kind: TokenKind, text: &str, line: usize, col: usize) -> Token {
         Token {
