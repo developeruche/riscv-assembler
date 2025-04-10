@@ -131,6 +131,7 @@ impl<'a> Parser<'a> {
 
         // First pass: parse all items and build symbol table
         loop {
+            // println!("Parsering line: {:?}", errors);
             match self.parse_line(symbol_table) {
                 Ok(Some(item)) => {
                     // Track label addresses

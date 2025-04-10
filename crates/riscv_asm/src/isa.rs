@@ -624,7 +624,7 @@ impl Instruction {
                 rs2,
                 ref target,
             } => encode_b(
-                resolve_immediate(target, true, 13)?,
+                resolve_immediate(target, true, 13)? - current_pc as i32,
                 rs2,
                 rs1,
                 0b000,
@@ -695,9 +695,11 @@ impl Instruction {
             } // Imm needs upper 20 bits of offset
 
             //  J-Type
-            Instruction::Jal { rd, ref target } => {
-                encode_j(resolve_immediate(target, true, 21)?, rd, OP_JAL)
-            }
+            Instruction::Jal { rd, ref target } => encode_j(
+                resolve_immediate(target, true, 21)? - current_pc as i32,
+                rd,
+                OP_JAL,
+            ),
         };
 
         Ok(encoding?) // Propagate potential errors from resolve_* and encode_* helpers

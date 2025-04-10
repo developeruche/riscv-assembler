@@ -290,7 +290,8 @@ fn classify_identifier(s: &str) -> TokenKind {
         "beq" | "bne" | "blt" | "bge" | "bltu" | "bgeu" | // B-type
         "lui" | "auipc" | // U-type
         "jal" | // J-type
-        "mul" | "mulh" | "mulhsu" | "mulhu" | "div" | "divu" | "rem" | "remu" // M Extension
+        "mul" | "mulh" | "mulhsu" | "mulhu" | "div" | "divu" | "rem" | "remu" | // M Extension
+        "ecall"
          => TokenKind::Instruction,
 
         // Default to identifier (likely a label)

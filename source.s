@@ -26,15 +26,11 @@ skip:
 
     # Test alignment directive
     .align 2               # Align to 4-byte boundary
+    ecall
 
 function:
     # Function that adds 1 to x10 and returns
     addi x11, x11, 1         # Increment x10
     jalr zero, x1, 0       # Return to caller
 
-# Data section
-.data
-.align 2
-value:
-    .word 0xdeadbeef       # Test word directive
-    .byte 0x42             # Test byte directive
+
