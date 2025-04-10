@@ -25,6 +25,7 @@ pub enum TokenKind {
     Newline,     // \n or \r\n
     Comment,     // Text after '#'
     EndOfFile,
+    String,
 }
 
 /// Lexes the input string into a vector of Tokens.
@@ -110,8 +111,22 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
                     if !chars.peek().map_or(false, |c| c.is_ascii_digit()) {
                         return Err(err_lex("Expected digit after '-'", line_num, col_num + 1));
                     }
-                    text.push(chars.next().unwrap()); // Consume the digit
-                    col_num += 1;
+                    // consume digits till a char that is not a digit. it could be comma, of new line
+                    // text.push(chars.next().unwrap()); // Consume the digit
+                    // col_num += 1;
+                    loop {
+                        match chars.peek() {
+                            Some(c) => {
+                                if c.is_digit(10) {
+                                    text.push(chars.next().unwrap()); // Consume the digit
+                                    col_num += 1;
+                                } else {
+                                    break;
+                                }
+                            }
+                            None => break,
+                        }
+                    }
                 } else if char == '0' && chars.peek() == Some(&'x') {
                     // Hex prefix
                     text.push(chars.next().unwrap()); // Consume 'x'
@@ -187,7 +202,49 @@ pub fn tokenize(source: &str) -> Result<Vec<Token>, AssemblerError> {
                 col_num += text.len() - 1; // Adjust col_num
                 continue; // Already advanced col_num
             }
+            //  String literals (quoted text)
+            '"' => {
+                let mut text = String::new();
+                text.push(char); // Include the opening quote
 
+                let mut escaped = false;
+
+                while let Some(c) = chars.next() {
+                    text.push(c);
+                    col_num += 1;
+
+                    if escaped {
+                        escaped = false;
+                        continue;
+                    }
+
+                    match c {
+                        '\\' => escaped = true,
+                        '"' => break, // End of string
+                        '\n' => {
+                            return Err(err_lex(
+                                "Unterminated string literal",
+                                line_num,
+                                start_col,
+                            ));
+                        }
+                        _ => {}
+                    }
+                }
+
+                // Check if we exited the loop without finding the closing quote
+                if !text.ends_with('"') {
+                    return Err(err_lex("Unterminated string literal", line_num, start_col));
+                }
+
+                tokens.push(Token {
+                    kind: TokenKind::String,
+                    text,
+                    loc,
+                });
+
+                continue; // Already incremented col_num in the loop
+            }
             _ => {
                 return Err(err_lex(
                     format!("Unexpected character: '{}'", char),
@@ -277,6 +334,47 @@ mod tests {
                 .iter()
                 .any(|t| t.kind == TokenKind::Integer && t.text == "0xFF")
         );
+    }
+
+    #[test]
+    fn test_simple_instruction_1() {
+        let code = "lb a0, 8(sp)";
+        let tokens = tokenize(code).unwrap();
+
+        // Check the instruction token
+        assert_eq!(tokens[0].kind, TokenKind::Instruction);
+        assert_eq!(tokens[0].text, "lb".to_string());
+
+        // Check the register token
+        assert_eq!(tokens[1].kind, TokenKind::Register);
+        assert_eq!(tokens[1].text, "a0".to_string());
+
+        // Check the comma token
+        assert_eq!(tokens[2].kind, TokenKind::Comma);
+        assert_eq!(tokens[2].text, ",".to_string());
+
+        // Check the immediate value token
+        assert_eq!(tokens[3].kind, TokenKind::Integer);
+        assert_eq!(tokens[3].text, "8".to_string());
+
+        // Check the left parenthesis token
+        assert_eq!(tokens[4].kind, TokenKind::LParen);
+        assert_eq!(tokens[4].text, "(".to_string());
+
+        // Check the base register token
+        assert_eq!(tokens[5].kind, TokenKind::Register);
+        assert_eq!(tokens[5].text, "sp".to_string());
+
+        // Check the right parenthesis token
+        assert_eq!(tokens[6].kind, TokenKind::RParen);
+        assert_eq!(tokens[6].text, ")".to_string());
+
+        // Check the right parenthesis token
+        assert_eq!(tokens[7].kind, TokenKind::EndOfFile);
+        assert_eq!(tokens[7].text, "".to_string());
+
+        // Verify the total number of tokens
+        assert_eq!(tokens.len(), 8);
     }
 
     #[test]

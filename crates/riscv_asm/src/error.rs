@@ -41,6 +41,8 @@ pub enum AssemblerError {
     IoError(String), // Wrap std::io::Error if needed
     /// Represents multiple errors found during assembly.
     MultipleErrors(Vec<AssemblerError>),
+    /// StdParseError
+    StdParseError(String),
 }
 
 impl fmt::Display for AssemblerError {
@@ -59,6 +61,7 @@ impl fmt::Display for AssemblerError {
                 write!(f, "Encoding Error near {}: {}", loc, message)
             }
             AssemblerError::IoError(msg) => write!(f, "I/O Error: {}", msg),
+            AssemblerError::StdParseError(msg) => write!(f, "Parse Error: {}", msg),
             AssemblerError::MultipleErrors(errs) => {
                 writeln!(f, "Multiple errors found:")?;
                 for err in errs {
