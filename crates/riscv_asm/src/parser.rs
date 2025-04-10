@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
 
             // Parse any additional operands separated by commas
             while self.peek_token_is(TokenKind::Comma) {
-                let t_com = self.consume_token(); // Consume the comma
+                let _ = self.consume_token(); // Consume the comma
                 operands.push(self.parse_operand()?);
             }
         }
@@ -880,6 +880,7 @@ mod tests {
 
     #[test]
     fn test_parse_simple_instruction() {
+        // this also serve as the parse line test
         let tokens = vec![
             create_token(TokenKind::Instruction, "add", 1, 1),
             create_token(TokenKind::Register, "x1", 1, 5),
@@ -908,412 +909,295 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_parse_label() {
-    //     let tokens = vec![
-    //         create_token(TokenKind::Identifier, "loop", 1, 1),
-    //         create_token(TokenKind::Colon, ":", 1, 5),
-    //         create_token(TokenKind::Newline, "\n", 1, 6),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+    #[test]
+    fn test_parse_label() {
+        let tokens = vec![
+            create_token(TokenKind::Identifier, "loop", 1, 1),
+            create_token(TokenKind::Colon, ":", 1, 5),
+            create_token(TokenKind::Newline, "\n", 1, 6),
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let parsed = parser.parse_line(&mut symbol_table).unwrap().unwrap();
+        let parsed = parser.parse_line(&mut symbol_table).unwrap().unwrap();
 
-    //     match parsed {
-    //         ParsedItem::Label(label) => {
-    //             assert_eq!(label.name, "loop");
-    //             assert_eq!(label.address, 0);
-    //         }
-    //         _ => panic!("Expected Label, got {:?}", parsed),
-    //     }
-    // }
+        match parsed {
+            ParsedItem::Label(label) => {
+                assert_eq!(label.name, "loop");
+                assert_eq!(label.address, 0);
+            }
+            _ => panic!("Expected Label, got {:?}", parsed),
+        }
+    }
 
-    // #[test]
-    // fn test_parse_directive() {
-    //     let tokens = vec![
-    //         create_token(TokenKind::Directive, ".word", 1, 1),
-    //         create_token(TokenKind::Integer, "42", 1, 7),
-    //         create_token(TokenKind::Newline, "\n", 1, 9),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+    #[test]
+    fn test_parse_memory_operand() {
+        let tokens = vec![
+            create_token(TokenKind::Instruction, "lw", 1, 1),
+            create_token(TokenKind::Register, "x1", 1, 4),
+            create_token(TokenKind::Comma, ",", 1, 6),
+            create_token(TokenKind::Integer, "8", 1, 8),
+            create_token(TokenKind::LParen, "(", 1, 9),
+            create_token(TokenKind::Register, "sp", 1, 10),
+            create_token(TokenKind::RParen, ")", 1, 12),
+            create_token(TokenKind::Newline, "\n", 1, 13),
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let parsed = parser.parse_line(&mut symbol_table).unwrap().unwrap();
+        let parsed = parser.parse_line(&mut symbol_table).unwrap().unwrap();
 
-    //     match parsed {
-    //         ParsedItem::Directive(dir) => match dir.directive {
-    //             Directive::Word(value) => assert_eq!(value, 42),
-    //             _ => panic!("Expected Word directive, got {:?}", dir.directive),
-    //         },
-    //         _ => panic!("Expected Directive, got {:?}", parsed),
-    //     }
-    // }
+        match parsed {
+            ParsedItem::Instruction(instr) => {
+                assert_eq!(instr.mnemonic, "lw");
+                assert_eq!(instr.operands.len(), 2);
+                assert_eq!(instr.operands[0], Operand::Register(1));
+                assert_eq!(instr.operands[1], Operand::Memory { offset: 8, base: 2 }); // sp is x2
+            }
+            _ => panic!("Expected Instruction, got {:?}", parsed),
+        }
+    }
 
-    // #[test]
-    // fn test_parse_memory_operand() {
-    //     let tokens = vec![
-    //         create_token(TokenKind::Instruction, "lw", 1, 1),
-    //         create_token(TokenKind::Register, "x1", 1, 4),
-    //         create_token(TokenKind::Comma, ",", 1, 6),
-    //         create_token(TokenKind::Integer, "8", 1, 8),
-    //         create_token(TokenKind::LParen, "(", 1, 9),
-    //         create_token(TokenKind::Register, "sp", 1, 10),
-    //         create_token(TokenKind::RParen, ")", 1, 12),
-    //         create_token(TokenKind::Newline, "\n", 1, 13),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+    #[test]
+    fn test_parse_multiple_lines() {
+        let source = r#"
+                    .text
+                    main:
+                        addi sp, sp, -20
+                        sw ra, 12(sp)
+            
+                        jal ra, function
+            
+                        lw ra, 12(sp)
+                        addi sp, sp, 16
+            
+                    function:
+                        addi a0, zero, 42
+                    "#;
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let tokens = tokenize(source).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let parsed = parser.parse_line(&mut symbol_table).unwrap().unwrap();
+        let parsed = parser.parse_all(&mut symbol_table).unwrap();
 
-    //     match parsed {
-    //         ParsedItem::Instruction(instr) => {
-    //             assert_eq!(instr.mnemonic, "lw");
-    //             assert_eq!(instr.operands.len(), 2);
-    //             assert_eq!(instr.operands[0], Operand::Register(1));
-    //             assert_eq!(instr.operands[1], Operand::Memory { offset: 8, base: 2 }); // sp is x2
-    //         }
-    //         _ => panic!("Expected Instruction, got {:?}", parsed),
-    //     }
-    // }
+        // Verify we parsed 11 items (1 section, 2 labels, 6 instructions)
+        assert_eq!(parsed.len(), 9);
 
-    // #[test]
-    // fn test_parse_multiple_lines() {
-    //     let source = r#"
-    //         .text
-    //     main:
-    //         addi sp, sp, -16
-    //         sw ra, 12(sp)
+        // Verify symbol table has 2 labels: main and function
+        assert_eq!(symbol_table.len(), 2);
+        assert!(symbol_table.is_defined("main"));
+        assert!(symbol_table.is_defined("function"));
+    }
 
-    //         jal ra, function
+    #[test]
+    fn test_parse_errors() {
+        // Test invalid register name
+        let tokens = vec![
+            create_token(TokenKind::Instruction, "add", 1, 1),
+            create_token(TokenKind::Register, "x99", 1, 5), // Invalid register (x99)
+            create_token(TokenKind::Comma, ",", 1, 8),
+            create_token(TokenKind::Register, "x2", 1, 10),
+            create_token(TokenKind::Comma, ",", 1, 12),
+            create_token(TokenKind::Register, "x3", 1, 14),
+            create_token(TokenKind::Newline, "\n", 1, 16),
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    //         lw ra, 12(sp)
-    //         addi sp, sp, 16
-    //         ret
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     function:
-    //         addi a0, zero, 42
-    //         ret
-    //     "#;
+        let result = parser.parse_line(&mut symbol_table);
+        assert!(result.is_err(), "Expected error for invalid register");
 
-    //     let tokens = tokenize(source).unwrap();
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        // Test missing operand
+        let tokens = vec![
+            create_token(TokenKind::Instruction, "add", 1, 1),
+            create_token(TokenKind::Register, "x1", 1, 5),
+            create_token(TokenKind::Comma, ",", 1, 7),
+            create_token(TokenKind::Newline, "\n", 1, 8), // Missing operands
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    //     let parsed = parser.parse_all(&mut symbol_table).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     // Verify we parsed 11 items (1 section, 2 labels, 8 instructions)
-    //     assert_eq!(parsed.len(), 11);
+        let result = parser.parse_line(&mut symbol_table);
+        assert!(result.is_err(), "Expected error for missing operand");
 
-    //     // Verify symbol table has 2 labels: main and function
-    //     assert_eq!(symbol_table.len(), 2);
-    //     assert!(symbol_table.is_defined("main"));
-    //     assert!(symbol_table.is_defined("function"));
-    // }
+        // Test invalid directive
+        let tokens = vec![
+            create_token(TokenKind::Directive, ".invalid", 1, 1), // Invalid directive
+            create_token(TokenKind::Integer, "42", 1, 10),
+            create_token(TokenKind::Newline, "\n", 1, 12),
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    // #[test]
-    // fn test_parse_errors() {
-    //     // Test invalid register name
-    //     let tokens = vec![
-    //         create_token(TokenKind::Instruction, "add", 1, 1),
-    //         create_token(TokenKind::Register, "x99", 1, 5), // Invalid register (x99)
-    //         create_token(TokenKind::Comma, ",", 1, 8),
-    //         create_token(TokenKind::Register, "x2", 1, 10),
-    //         create_token(TokenKind::Comma, ",", 1, 12),
-    //         create_token(TokenKind::Register, "x3", 1, 14),
-    //         create_token(TokenKind::Newline, "\n", 1, 16),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let result = parser.parse_line(&mut symbol_table);
+        assert!(result.is_err(), "Expected error for invalid directive");
 
-    //     let result = parser.parse_line(&mut symbol_table);
-    //     assert!(result.is_err(), "Expected error for invalid register");
+        // Test invalid memory operand
+        let tokens = vec![
+            create_token(TokenKind::Instruction, "lw", 1, 1),
+            create_token(TokenKind::Register, "x1", 1, 4),
+            create_token(TokenKind::Comma, ",", 1, 6),
+            create_token(TokenKind::Integer, "8", 1, 8),
+            create_token(TokenKind::LParen, "(", 1, 9),
+            create_token(TokenKind::Identifier, "notareg", 1, 10), // Not a register
+            create_token(TokenKind::RParen, ")", 1, 17),
+            create_token(TokenKind::Newline, "\n", 1, 18),
+            create_token(TokenKind::EndOfFile, "", 2, 1),
+        ];
 
-    //     // Test missing operand
-    //     let tokens = vec![
-    //         create_token(TokenKind::Instruction, "add", 1, 1),
-    //         create_token(TokenKind::Register, "x1", 1, 5),
-    //         create_token(TokenKind::Comma, ",", 1, 7),
-    //         create_token(TokenKind::Newline, "\n", 1, 8), // Missing operands
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let result = parser.parse_line(&mut symbol_table);
+        assert!(result.is_err(), "Expected error for invalid memory operand");
+    }
 
-    //     let result = parser.parse_line(&mut symbol_table);
-    //     assert!(result.is_err(), "Expected error for missing operand");
+    #[test]
+    fn test_integration_with_lexer() {
+        // Test complete integration from source to parsed items
+        let source = r#"
+            # This is a RISC-V assembly program
+            .global main       # Make main visible externally
 
-    //     // Test invalid directive
-    //     let tokens = vec![
-    //         create_token(TokenKind::Directive, ".invalid", 1, 1), // Invalid directive
-    //         create_token(TokenKind::Integer, "42", 1, 10),
-    //         create_token(TokenKind::Newline, "\n", 1, 12),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+            .text
+            main:              # Main entry point
+                addi sp, sp, -16   # Allocate stack frame
+                sw ra, 12(sp)     # Save return address
+                
+                lui a0, 0x42       # Load immediate
+                jal ra, print     # Call print function
+                
+                lw ra, 12(sp)     # Restore return address
+                addi sp, sp, 16   # Deallocate stack frame
+            
+            print:
+                # Some function code...
+                addi a0, a0, 1    # Increment argument
+        "#;
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        let tokens = tokenize(source).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //     let result = parser.parse_line(&mut symbol_table);
-    //     assert!(result.is_err(), "Expected error for invalid directive");
+        let parsed = parser.parse_all(&mut symbol_table).unwrap();
 
-    //     // Test invalid memory operand
-    //     let tokens = vec![
-    //         create_token(TokenKind::Instruction, "lw", 1, 1),
-    //         create_token(TokenKind::Register, "x1", 1, 4),
-    //         create_token(TokenKind::Comma, ",", 1, 6),
-    //         create_token(TokenKind::Integer, "8", 1, 8),
-    //         create_token(TokenKind::LParen, "(", 1, 9),
-    //         create_token(TokenKind::Identifier, "notareg", 1, 10), // Not a register
-    //         create_token(TokenKind::RParen, ")", 1, 17),
-    //         create_token(TokenKind::Newline, "\n", 1, 18),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+        // Verify we parsed expected number of items
+        // - 1 global directive
+        // - 1 text section
+        // - 2 labels in text (main, print)
+        // - 7 instructions in main
+        // - 2 instructions in print
+        // - 1 data section
+        // - 2 labels in data (message, numbers)
+        // - 2 data directives
+        assert!(
+            parsed.len() >= 11,
+            "Expected at least 11 parsed items, got {}",
+            parsed.len()
+        );
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        // Verify symbol table has main, print, message, and numbers labels
+        assert!(symbol_table.is_defined("main"), "Symbol 'main' not found");
+        assert!(symbol_table.is_defined("print"), "Symbol 'print' not found");
 
-    //     let result = parser.parse_line(&mut symbol_table);
-    //     assert!(result.is_err(), "Expected error for invalid memory operand");
+        // Verify the type of some specific items
+        let mut found_main_label = false;
+        let mut found_addi_sp = false;
+        let mut found_global_main = false;
 
-    //     // Test unexpected token
-    //     let tokens = vec![
-    //         create_token(TokenKind::Instruction, "add", 1, 1),
-    //         create_token(TokenKind::Register, "x1", 1, 5),
-    //         create_token(TokenKind::Register, "x2", 1, 8), // Missing comma
-    //         create_token(TokenKind::Newline, "\n", 1, 10),
-    //         create_token(TokenKind::EndOfFile, "", 2, 1),
-    //     ];
+        for item in &parsed {
+            match item {
+                ParsedItem::Label(label) if label.name == "main" => {
+                    found_main_label = true;
+                }
+                ParsedItem::Instruction(instr)
+                    if instr.mnemonic == "addi"
+                    && matches!(instr.operands[0], Operand::Register(2)) // sp is x2
+                    && matches!(instr.operands[1], Operand::Register(2)) // sp is x2
+                    && matches!(instr.operands[2], Operand::Immediate(-16)) =>
+                {
+                    found_addi_sp = true;
+                }
+                ParsedItem::Directive(dir) if matches!(dir.directive, Directive::Global(ref s) if s == "main") =>
+                {
+                    found_global_main = true;
+                }
+                _ => {}
+            }
+        }
 
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        assert!(found_main_label, "Main label not found");
+        assert!(found_addi_sp, "addi sp, sp, -16 instruction not found");
+        assert!(found_global_main, ".global main directive not found");
+    }
 
-    //     let result = parser.parse_line(&mut symbol_table);
-    //     assert!(result.is_err(), "Expected error for unexpected token");
-    // }
+    #[test]
+    fn test_address_tracking() {
+        // Test that the parser correctly updates addresses
+        let source = r#"
+        .text
+    start:
+        addi x1, x0, 1    # 4 bytes
+        addi x2, x0, 2    # 4 bytes
+        .align 3          # Align to 8 bytes (might add padding)
+    aligned:
+        addi x3, x0, 3    # 4 bytes
+        .word 0xdeadbeef  # 4 bytes
+        .byte 0x42        # 1 byte
+        "#;
 
-    // #[test]
-    // fn test_integration_with_lexer() {
-    //     // Test complete integration from source to parsed items
-    //     let source = r#"
-    //         # This is a RISC-V assembly program
-    //         .global main       # Make main visible externally
+        let tokens = tokenize(source).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
 
-    //         .text
-    //         main:              # Main entry point
-    //             addi sp, sp, -16   # Allocate stack frame
-    //             sw ra, 12(sp)     # Save return address
+        let parsed = parser.parse_all(&mut symbol_table).unwrap();
 
-    //             li a0, 0x42       # Load immediate
-    //             jal ra, print     # Call print function
+        // Get addresses from symbol table
+        let start_addr = symbol_table.lookup("start").unwrap().address();
+        let aligned_addr = symbol_table.lookup("aligned").unwrap().address();
 
-    //             lw ra, 12(sp)     # Restore return address
-    //             addi sp, sp, 16   # Deallocate stack frame
-    //             jr ra             # Return
+        // Verify start address is 0
+        assert_eq!(start_addr, 0, "start should be at address 0");
 
-    //         print:
-    //             # Some function code...
-    //             addi a0, a0, 1    # Increment argument
-    //             ret               # Return
+        // Verify aligned address is a multiple of 8 (2^3)
+        assert_eq!(
+            aligned_addr % 8,
+            0,
+            "aligned should be at an 8-byte boundary"
+        );
 
-    //         .data
-    //         message: .string "Hello, RISC-V!"
-    //         numbers: .word 1, 2, 3, 4, 5
-    //     "#;
+        // Verify aligned is after start + 2 instructions (at least 8 bytes)
+        assert!(
+            aligned_addr >= start_addr + 8,
+            "aligned should be at least 8 bytes after start"
+        );
 
-    //     let tokens = tokenize(source).unwrap();
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
+        // Find the .byte directive and get its address
+        let mut byte_addr = 0;
+        for item in &parsed {
+            if let ParsedItem::Directive(dir) = item {
+                if let Directive::Byte(_) = dir.directive {
+                    byte_addr = dir.address;
+                    break;
+                }
+            }
+        }
 
-    //     let parsed = parser.parse_all(&mut symbol_table).unwrap();
-
-    //     // Verify we parsed expected number of items
-    //     // - 1 global directive
-    //     // - 1 text section
-    //     // - 2 labels in text (main, print)
-    //     // - 7 instructions in main
-    //     // - 2 instructions in print
-    //     // - 1 data section
-    //     // - 2 labels in data (message, numbers)
-    //     // - 2 data directives
-    //     assert!(
-    //         parsed.len() >= 16,
-    //         "Expected at least 16 parsed items, got {}",
-    //         parsed.len()
-    //     );
-
-    //     // Verify symbol table has main, print, message, and numbers labels
-    //     assert!(symbol_table.is_defined("main"), "Symbol 'main' not found");
-    //     assert!(symbol_table.is_defined("print"), "Symbol 'print' not found");
-    //     assert!(
-    //         symbol_table.is_defined("message"),
-    //         "Symbol 'message' not found"
-    //     );
-    //     assert!(
-    //         symbol_table.is_defined("numbers"),
-    //         "Symbol 'numbers' not found"
-    //     );
-
-    //     // Verify the type of some specific items
-    //     let mut found_main_label = false;
-    //     let mut found_addi_sp = false;
-    //     let mut found_global_main = false;
-    //     let mut found_data_section = false;
-
-    //     for item in &parsed {
-    //         match item {
-    //             ParsedItem::Label(label) if label.name == "main" => {
-    //                 found_main_label = true;
-    //             }
-    //             ParsedItem::Instruction(instr)
-    //                 if instr.mnemonic == "addi"
-    //                 && matches!(instr.operands[0], Operand::Register(2)) // sp is x2
-    //                 && matches!(instr.operands[1], Operand::Register(2)) // sp is x2
-    //                 && matches!(instr.operands[2], Operand::Immediate(-16)) =>
-    //             {
-    //                 found_addi_sp = true;
-    //             }
-    //             ParsedItem::Directive(dir) if matches!(dir.directive, Directive::Global(ref s) if s == "main") =>
-    //             {
-    //                 found_global_main = true;
-    //             }
-    //             ParsedItem::Directive(dir) if matches!(dir.directive, Directive::Section(ref s) if s == ".data") =>
-    //             {
-    //                 found_data_section = true;
-    //             }
-    //             _ => {}
-    //         }
-    //     }
-
-    //     assert!(found_main_label, "Main label not found");
-    //     assert!(found_addi_sp, "addi sp, sp, -16 instruction not found");
-    //     assert!(found_global_main, ".global main directive not found");
-    //     assert!(found_data_section, ".data section not found");
-    // }
-
-    // #[test]
-    // fn test_complex_operands() {
-    //     // Test complex expressions and addressing modes
-    //     let source = r#"
-    //     lui a0, %hi(data)      # Upper 20 bits of address
-    //     addi a0, a0, %lo(data) # Lower 12 bits of address
-    //     lw t0, (a0)            # Load from address in a0
-    //     sw t1, 4(a0)           # Store to address in a0 + 4
-    //     "#;
-
-    //     let tokens = tokenize(source).unwrap();
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
-
-    //     let parsed = parser.parse_all(&mut symbol_table).unwrap();
-
-    //     // We should have 4 instructions
-    //     let mut instruction_count = 0;
-    //     for item in &parsed {
-    //         if let ParsedItem::Instruction(_) = item {
-    //             instruction_count += 1;
-    //         }
-    //     }
-    //     assert_eq!(instruction_count, 4, "Expected 4 instructions");
-
-    //     // Check the memory operands specifically
-    //     let mut found_lw = false;
-    //     let mut found_sw = false;
-
-    //     for item in &parsed {
-    //         if let ParsedItem::Instruction(instr) = item {
-    //             match instr.mnemonic.as_str() {
-    //                 "lw" => {
-    //                     assert_eq!(instr.operands.len(), 2, "lw should have 2 operands");
-    //                     if let Operand::Memory { offset, base } = instr.operands[1] {
-    //                         assert_eq!(offset, 0, "lw should have 0 offset");
-    //                         assert_eq!(base, 10, "lw should use a0 (x10) as base");
-    //                         found_lw = true;
-    //                     }
-    //                 }
-    //                 "sw" => {
-    //                     assert_eq!(instr.operands.len(), 2, "sw should have 2 operands");
-    //                     if let Operand::Memory { offset, base } = instr.operands[1] {
-    //                         assert_eq!(offset, 4, "sw should have 4 offset");
-    //                         assert_eq!(base, 10, "sw should use a0 (x10) as base");
-    //                         found_sw = true;
-    //                     }
-    //                 }
-    //                 _ => {}
-    //             }
-    //         }
-    //     }
-
-    //     assert!(found_lw, "lw instruction with memory operand not found");
-    //     assert!(found_sw, "sw instruction with memory operand not found");
-    // }
-
-    // #[test]
-    // fn test_address_tracking() {
-    //     // Test that the parser correctly updates addresses
-    //     let source = r#"
-    //     .text
-    // start:
-    //     addi x1, x0, 1    # 4 bytes
-    //     addi x2, x0, 2    # 4 bytes
-    //     .align 3          # Align to 8 bytes (might add padding)
-    // aligned:
-    //     addi x3, x0, 3    # 4 bytes
-    //     .word 0xdeadbeef  # 4 bytes
-    //     .byte 0x42        # 1 byte
-    //     "#;
-
-    //     let tokens = tokenize(source).unwrap();
-    //     let mut parser = Parser::new(&tokens);
-    //     let mut symbol_table = SymbolTable::new();
-
-    //     let parsed = parser.parse_all(&mut symbol_table).unwrap();
-
-    //     // Get addresses from symbol table
-    //     let start_addr = symbol_table.lookup("start").unwrap().address();
-    //     let aligned_addr = symbol_table.lookup("aligned").unwrap().address();
-
-    //     // Verify start address is 0
-    //     assert_eq!(start_addr, 0, "start should be at address 0");
-
-    //     // Verify aligned address is a multiple of 8 (2^3)
-    //     assert_eq!(
-    //         aligned_addr % 8,
-    //         0,
-    //         "aligned should be at an 8-byte boundary"
-    //     );
-
-    //     // Verify aligned is after start + 2 instructions (at least 8 bytes)
-    //     assert!(
-    //         aligned_addr >= start_addr + 8,
-    //         "aligned should be at least 8 bytes after start"
-    //     );
-
-    //     // Find the .byte directive and get its address
-    //     let mut byte_addr = 0;
-    //     for item in &parsed {
-    //         if let ParsedItem::Directive(dir) = item {
-    //             if let Directive::Byte(_) = dir.directive {
-    //                 byte_addr = dir.address;
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     // Verify byte address is after aligned + instruction + word (at least 8 more bytes)
-    //     assert!(
-    //         byte_addr >= aligned_addr + 8,
-    //         "byte directive should be at least 8 bytes after aligned"
-    //     );
-    // }
+        // Verify byte address is after aligned + instruction + word (at least 8 more bytes)
+        assert!(
+            byte_addr >= aligned_addr + 8,
+            "byte directive should be at least 8 bytes after aligned"
+        );
+    }
 }
