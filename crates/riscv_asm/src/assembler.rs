@@ -1590,4 +1590,118 @@ mod tests {
             "Assembly should fail with undefined symbol"
         );
     }
+
+    #[test]
+    fn test_equ_directive() {
+        // Test program using .equ directive to define constants
+        let source = r#"
+            # Define some constants
+            .equ BUFFER_SIZE, 64
+            .equ ZERO_REG, 0
+            .equ DATA_OFFSET, 16
+            
+            .text
+            start:
+                # Use the constants in instructions
+                addi a0, x0, BUFFER_SIZE     # a0 = 64
+                addi t0, x0, DATA_OFFSET     # t0 = 16
+                addi t1, x0, ZERO_REG        # t1 = 0
+        "#;
+
+        // Tokenize and parse
+        let tokens = tokenize(source).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
+
+        let parsed_items = parser.parse_all(&mut symbol_table).unwrap();
+
+        // Verify symbols were defined in the symbol table
+        assert!(
+            symbol_table.is_defined("BUFFER_SIZE"),
+            "BUFFER_SIZE should be defined"
+        );
+        assert!(
+            symbol_table.is_defined("ZERO_REG"),
+            "ZERO_REG should be defined"
+        );
+        assert!(
+            symbol_table.is_defined("DATA_OFFSET"),
+            "DATA_OFFSET should be defined"
+        );
+
+        // Verify the symbol values
+        assert_eq!(symbol_table.lookup("BUFFER_SIZE").unwrap().address(), 64);
+        assert_eq!(symbol_table.lookup("ZERO_REG").unwrap().address(), 0);
+        assert_eq!(symbol_table.lookup("DATA_OFFSET").unwrap().address(), 16);
+
+        // Verify the instructions use the constants
+        let mut found_addi_buffer = false;
+        let mut found_addi_offset = false;
+        let mut found_addi_zero = false;
+
+        for item in parsed_items {
+            if let ParsedItem::Instruction(instr) = item {
+                if instr.mnemonic == "addi" {
+                    match &instr.operands[0] {
+                        ParsedOperand::Register(10) => {
+                            // a0 is x10
+                            // addi a0, x0, BUFFER_SIZE
+                            assert_eq!(
+                                instr.operands[2],
+                                ParsedOperand::Symbol("BUFFER_SIZE".to_string())
+                            );
+                            found_addi_buffer = true;
+                        }
+                        ParsedOperand::Register(5) => {
+                            // t0 is x5
+                            // addi t0, x0, DATA_OFFSET
+                            assert_eq!(
+                                instr.operands[2],
+                                ParsedOperand::Symbol("DATA_OFFSET".to_string())
+                            );
+                            found_addi_offset = true;
+                        }
+                        ParsedOperand::Register(6) => {
+                            // t1 is x6
+                            // addi t1, x0, ZERO_REG
+                            assert_eq!(
+                                instr.operands[2],
+                                ParsedOperand::Symbol("ZERO_REG".to_string())
+                            );
+                            found_addi_zero = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        assert!(
+            found_addi_buffer,
+            "Didn't find addi instruction using BUFFER_SIZE"
+        );
+        assert!(
+            found_addi_offset,
+            "Didn't find addi instruction using DATA_OFFSET"
+        );
+        assert!(
+            found_addi_zero,
+            "Didn't find addi instruction using ZERO_REG"
+        );
+
+        // Now let's assemble the program and check that the symbol values are used in the machine code
+        let result = assemble(source).unwrap();
+
+        // First instruction: addi a0, x0, 64 (BUFFER_SIZE)
+        // 0x04000513
+        assert_eq!(result.code[0], 0x04000513);
+
+        // Second instruction: addi t0, x0, 16 (DATA_OFFSET)
+        // 0x01000293
+        assert_eq!(result.code[1], 0x01000293);
+
+        // Third instruction: addi t1, x0, 0 (ZERO_REG)
+        // 0x00000313
+        assert_eq!(result.code[2], 0x00000313);
+    }
 }

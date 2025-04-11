@@ -143,6 +143,30 @@ impl<'a> Parser<'a> {
                         ) {
                             errors.push(e);
                         }
+                    } else if let ParsedItem::Directive(ref dir) = item {
+                        match &dir.directive {
+                            Directive::Equ(name, value) => {
+                                // Define the symbol with the constant value
+                                if let Err(e) = symbol_table.define(
+                                    name.clone(),
+                                    *value as u32,
+                                    Some(dir.line_number),
+                                ) {
+                                    errors.push(e);
+                                }
+                            }
+                            Directive::EquPC(name) => {
+                                // Define the symbol with the current address
+                                if let Err(e) = symbol_table.define(
+                                    name.clone(),
+                                    self.current_address,
+                                    Some(dir.line_number),
+                                ) {
+                                    errors.push(e);
+                                }
+                            }
+                            _ => {} // Other directives don't need special handling here
+                        }
                     }
                     parsed_items.push(item);
                 }
