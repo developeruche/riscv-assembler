@@ -147,7 +147,13 @@ impl<'a> Parser<'a> {
                     parsed_items.push(item);
                 }
                 Ok(None) => break, // End of input
-                Err(e) => errors.push(e),
+                Err(e) => {
+                    if errors.len() < 5 {
+                        errors.push(e);
+                    } else {
+                        break;
+                    }
+                }
             }
         }
 
