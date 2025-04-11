@@ -54,8 +54,6 @@ pub fn assemble(source: &str) -> Result<AssemblyOutput, AssemblerError> {
     let mut memory_map = MemoryMap::new();
     allocate_memory(&parsed_items, &mut memory_map)?;
 
-    println!("This is the memory map: {:?}", memory_map);
-
     // Step 4: Generate machine code
     let output = generate_machine_code(&parsed_items, &symbol_table, &memory_map)?;
     Ok(output)
