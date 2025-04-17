@@ -26,10 +26,6 @@ pub fn assemble(source: &str) -> Result<AssemblyOutput, AssemblerError> {
     let mut parser = Parser::new(&tokens);
     let parsed_items = parser.parse_all(&mut symbol_table)?;
 
-    for i in parsed_items.clone() {
-        println!("Parsed Items: {:?}", i);
-    }
-
     // Check for unresolved symbols
     let unresolved = symbol_table.check_unresolved();
     if !unresolved.is_empty() {
@@ -1525,7 +1521,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "would be back to this after cli implemenation"]
     fn test_assemble_with_forward_references() {
         // Test that the assembler correctly handles forward references
         let source = r#"
@@ -1533,21 +1528,21 @@ mod tests {
 
             .text
             start:
-                addi t0, zero, 1       # Set t0 = 1
-                beq t0, zero, end      # Forward branch to end (should not be taken)
-                jal ra, middle         # Forward jump to middle
+                addi x5, zero, 1       # Set x5 = 1
+                beq x5, zero, end      # Forward branch to end (should not be taken)
+                jal x1, middle         # Forward jump to middle
 
             loop:
-                addi t0, t0, -1        # Decrement t0
-                bge t0, zero, loop     # Loop until t0 < 0
-                j end                  # Jump to end
+                addi x5, x5, -1        # Decrement x5
+                bge x5, zero, loop     # Loop until x5 < 0
+                jal x0, end                  # Jump to end
 
             middle:
-                addi t0, t0, 5         # t0 = t0 + 5 = 6
-                jalr zero, ra, 0       # Return to caller
+                addi x5, x5, 5         # x5 = x5 + 5 = 6
+                jalr zero, x1, 0       # Return to caller
 
             end:
-                addi a0, t0, 0         # Set return value in a0
+                addi x10, x5, 0         # Set return value in x10
         "#;
 
         // Assemble the program
@@ -1559,7 +1554,7 @@ mod tests {
             "Should generate at least 7 instructions"
         );
 
-        // First instruction: addi t0, zero, 1 = 0x00100293
+        // First instruction: addi x5, zero, 1 = 0x00100293
         assert_eq!(result.code[0], 0x00100293);
 
         println!("Generated code with forward references: {:?}", result.code);
