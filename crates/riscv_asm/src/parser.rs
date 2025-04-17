@@ -259,6 +259,7 @@ impl<'a> Parser<'a> {
         } else if self.peek_token_is(TokenKind::Instruction) {
             // Parse an instruction
             let instruction = self.parse_instruction()?;
+            println!("Parsed items: {:?}", instruction);
 
             // Update current address (most RISC-V instructions are 4 bytes)
             self.current_address += 4;

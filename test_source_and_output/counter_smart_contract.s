@@ -96,18 +96,9 @@ _start:
     addi x6, zero, runtime_code_end
     
     sub x3, x6, x5            # x3 = length of runtime code
-    
-    addi x1, zero, 0            # Destination memory offset = 0
-    addi x2, zero, 0            # Source memory offset = 0
-    addi x3, zero, 0            # size         
-
-    
-    # Use ECALL_CODECOPY to copy code to memory
-    addi x31, zero, ECALL_CODECOPY
-    ecall
 
     # Return the copied code
-    addi x1, zero, 0                # mem_offset = 0
+    add x1, zero, x5                # mem_offset = x5
     add x2, zero, x3                # length of runtime code
     addi x31, zero, ECALL_RETURN
     ecall
