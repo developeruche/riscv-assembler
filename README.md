@@ -97,6 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 - For detailed library documentation, check the [library README](crates/riscv_asm/README.md)
 - For CLI usage information, see the [CLI README](bins/cli/README.md)
+- A good cheat sheet is available at https://projectf.io/posts/riscv-cheat-sheet/
 
 ## Contributing
 

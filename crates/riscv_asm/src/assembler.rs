@@ -281,14 +281,14 @@ fn convert_to_isa_instruction(
                     })
                 }
             }
-            ParsedOperand::Memory {
-                offset,
-                base: _base,
-            } => {
+            ParsedOperand::Memory { offset, base } => {
                 // Memory operands typically need to be handled specially based on the instruction
                 // but for now we'll just note this is incomplete
                 // We would need to get the content of the register at the base and add it to the offset. for now I would advice this instruction format should not be used
-                Ok(IsaOperand::Immediate(*offset))
+                Ok(IsaOperand::ImmediateAndRegister(
+                    *offset,
+                    Register::new(*base).unwrap(),
+                ))
             }
         }
     };
@@ -1341,6 +1341,41 @@ mod tests {
 
     #[test]
     fn test_generate_machine_code_2() {
+        let source = r#"
+        .text
+        start:
+            addi x1, x0, 1    # 4 bytes
+            addi x2, x0, 2    # 4 bytes
+            .align 3          # Align to 8 bytes (might add padding)
+        aligned:
+            addi x3, x0, 3    # 4 bytes
+            .word 0xdeadbeef  # 4 bytes
+            .byte 0x42        # 1 byte
+            "#;
+
+        let tokens = tokenize(source).unwrap();
+        let mut parser = Parser::new(&tokens);
+        let mut symbol_table = SymbolTable::new();
+
+        let parsed_items = parser.parse_all(&mut symbol_table).unwrap();
+
+        let mut memory_map = MemoryMap::new();
+        allocate_memory(&parsed_items, &mut memory_map).unwrap();
+        // Generate machine code
+        let output = generate_machine_code(&parsed_items, &symbol_table, &memory_map).unwrap();
+
+        // Check the output
+        assert_eq!(output.start_address, 0);
+        assert_eq!(output.size, 17); // 4 bytes instruction + 4 bytes word
+        assert_eq!(output.code.len(), 5);
+
+        // Check that first word is the ADDI instruction
+        assert_eq!(output.code[0], 1048723);
+        assert_eq!(output.code[1], 2097427);
+    }
+
+    #[test]
+    fn test_generate_machine_code_3() {
         let source = r#"
         .text
         start:
