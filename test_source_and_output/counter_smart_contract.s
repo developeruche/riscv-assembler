@@ -115,7 +115,7 @@ runtime_code_start:
     # --- Runtime Entry Point & Function Dispatcher ---
     # Read function selector (first 4 bytes of calldata)
     addi x1, zero, 0                # offset = 0
-    addi x31, zero, ECALL_CODECOPY  # setup for the ECALL
+    addi x31, zero, ECALL_CALLDATALOAD  # setup for the ECALL
     ecall                     # Returns first 32 bytes: Note in this case x2 would hold the first 4 bytes
     
 
@@ -291,7 +291,7 @@ _setValue:
 
 _return_true:
     # Prepare return value 'true' (uint256(1))
-    addi x2, x2, -8           # Allocate stack space
+    addi x2, zero, -48           # Allocate stack space
     addi x31, zero, ECALL_SSTORE
     addi x3, zero, 0
     addi x4, zero, 1
@@ -307,7 +307,7 @@ _return_true:
     
     # Return true u256(1)  
     add x1, zero, x2                # mem_offset = 0
-    addi x2, zero, 8                # length = 8 bytes (uint256)
+    addi x2, zero, 32                # length = 8 bytes (uint256)
     addi x31, zero, ECALL_RETURN
     ecall
     
