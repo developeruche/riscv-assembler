@@ -902,7 +902,7 @@ fn encode_u(imm: i32, rd: Register, opcode: u32) -> Result<u32, AssemblerError> 
     // Or just mask? The spec says imm[31:12]. Let's just mask.
     // For LUI, the immediate is used directly. For AUIPC, it's an offset.
     // Range check on the value *before* shifting might be needed depending on assembler directives (%hi/%lo)
-    let imm_u = imm as u32;
+    let imm_u = (imm as u32) << 12;
     Ok(
         ((imm_u & 0xFFFFF000)) // imm[31:12] - already shifted correctly if imm is full 32-bit value/offset
         | ((rd.number() as u32 & 0x1F) << 7)   // rd
