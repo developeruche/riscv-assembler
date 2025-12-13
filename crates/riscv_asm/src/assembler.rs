@@ -128,6 +128,9 @@ fn allocate_memory(
                 Directive::Asciz(s) => {
                     memory_map.allocate(i, s.len() + 1, 1); // +1 for null terminator
                 }
+                Directive::Ascii(s) => {
+                    memory_map.allocate(i, s.len(), 1); // no null terminator
+                }
                 Directive::Align(n) => {
                     // Align to 2^n boundary
                     let alignment = 1 << *n;
@@ -209,6 +212,13 @@ fn generate_machine_code(
                         }
                         // Null terminator
                         bytes[offset + s.len()] = 0;
+                    }
+                    Directive::Ascii(s) => {
+                        let offset = output_address as usize;
+                        // Copy the string bytes
+                        for (i, b) in s.bytes().enumerate() {
+                            bytes[offset + i] = b;
+                        }
                     }
                     Directive::Space(n) => {
                         // Space already filled with zeros by our pre-allocation
@@ -1629,7 +1639,7 @@ mod tests {
             .equ BUFFER_SIZE, 64
             .equ ZERO_REG, 0
             .equ DATA_OFFSET, 16
-            
+
             .text
             start:
                 # Use the constants in instructions
