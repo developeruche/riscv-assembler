@@ -47,6 +47,8 @@ pub enum Directive {
     Word(i64),
     /// Define a string with null terminator (.string, .asciz)
     Asciz(String),
+    /// Define a sequence of ASCII characters without null terminator (.ascii)
+    Ascii(String),
     /// Align to a power of 2 boundary (.align)
     Align(i64),
     /// Define a symbol's scope (.global, .globl)
@@ -304,9 +306,13 @@ impl<'a> Parser<'a> {
                 let value = self.parse_expression()?;
                 Directive::Word(value)
             }
-            ".string" | ".asciz" | ".ascii" => {
+            ".string" | ".asciz" => {
                 let string = self.parse_string()?;
                 Directive::Asciz(string)
+            }
+            ".ascii" => {
+                let string = self.parse_string()?;
+                Directive::Ascii(string)
             }
             ".align" => {
                 let value = self.parse_expression()?;
@@ -374,6 +380,7 @@ impl<'a> Parser<'a> {
             Directive::Half(_) => self.current_address += 2,
             Directive::Word(_) => self.current_address += 4,
             Directive::Asciz(s) => self.current_address += (s.len() + 1) as u32, // +1 for null terminator
+            Directive::Ascii(s) => self.current_address += s.len() as u32,
             Directive::Align(n) => {
                 let alignment = 1 << *n;
                 let mask = alignment - 1;
@@ -993,12 +1000,12 @@ mod tests {
                     main:
                         addi sp, sp, -20
                         sw ra, 12(sp)
-            
+
                         jal ra, function
-            
+
                         lw ra, 12(sp)
                         addi sp, sp, 16
-            
+
                     function:
                         addi a0, zero, 42
                     "#;
@@ -1098,13 +1105,13 @@ mod tests {
             main:              # Main entry point
                 addi sp, sp, -16   # Allocate stack frame
                 sw ra, 12(sp)     # Save return address
-                
+
                 lui a0, 0x42       # Load immediate
                 jal ra, print     # Call print function
-                
+
                 lw ra, 12(sp)     # Restore return address
                 addi sp, sp, 16   # Deallocate stack frame
-            
+
             print:
                 # Some function code...
                 addi a0, a0, 1    # Increment argument
